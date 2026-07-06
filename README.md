@@ -6,6 +6,25 @@ Project: Automated Mermaid diagram generation from COBOL source code
 Safety Priority: Data security, input validation, privacy protection
 Target Users: Legacy COBOL maintainers, modernization teams, auditors
 
+We're Building
+
+A secure, open-source tool that automatically generates Mermaid diagrams from COBOL source code to help developers understand legacy systems faster.
+
+Core Value Proposition
+
+Problem: COBOL is verbose, procedural, and full of jumps (PERFORM, GO TO, EVALUATE). New devs waste weeks tracing logic manually.
+
+Solution: Visual diagrams showing control flow, data structures, file I/O, and COPY dependencies.
+
+Target Users
+
+User Type | Industry | Pain Point
+--- | --- | ---
+Legacy COBOL Maintainers | Banking, Insurance, Government | Understanding inherited code
+Modernization Teams | Enterprise IT | Mapping logic before migration
+Auditors/Compliance | Finance, Healthcare | Tracing data flow for regulations
+COBOL Educators | Universities, Bootcamps | Teaching procedural logic
+
 
 
 📋 Executive Summary
