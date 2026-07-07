@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COBOL Visualization Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; }
+        .container { display: flex; gap: 2rem; height: 80vh; }
+        .editor, .preview { flex: 1; display: flex; flex-direction: column; }
+        textarea { flex: 1; font-family: monospace; padding: 1rem; }
+        .preview { border: 1px solid #ccc; overflow: auto; padding: 1rem; }
+        button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
+        #diagram-container { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <h1>COBOL to Mermaid Visualizer</h1>
+    <div class="container">
+        <div class="editor">
+            <textarea id="source" placeholder="Paste your COBOL source code here...">000100 IDENTIFICATION DIVISION.
+000200 PROCEDURE DIVISION.
+000300 MAIN-PARA.
+000400     PERFORM SUB-PARA.
+000500     STOP RUN.
+000600 SUB-PARA.
+000700     EXIT.</textarea>
+            <button onclick="generateDiagram()">Visualize</button>
+        </div>
+        <div class="preview">
+            <div id="diagram-container"></div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: false });
+
+        async function generateDiagram() {
+            const source = document.getElementById('source').value;
+            const container = document.getElementById('diagram-container');
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    container.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                container.innerHTML = `<pre class="mermaid">${data.diagram}</pre>`;
+                await mermaid.run({
+                    nodes: [container.querySelector('.mermaid')]
+                });
+            } catch (err) {
+                container.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
