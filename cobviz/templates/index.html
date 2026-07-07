@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COBOL Visualization Tool</title>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body { font-family: sans-serif; margin: 2rem; }
-        .container { display: flex; gap: 2rem; height: 80vh; }
-        .editor, .preview { flex: 1; display: flex; flex-direction: column; }
-        textarea { flex: 1; font-family: monospace; padding: 1rem; }
-        .preview { border: 1px solid #ccc; overflow: auto; padding: 1rem; }
-        button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
+        .container { display: flex; gap: 2rem; min-height: 60vh; }
+        .editor, .visualization { flex: 1; display: flex; flex-direction: column; }
+        textarea { flex: 1; font-family: monospace; padding: 1rem; min-height: 400px; }
+        .preview { border: 1px solid #ccc; overflow: auto; padding: 1rem; flex: 1; min-height: 400px; }
+        .explanation-container { margin-top: 2rem; border-top: 2px solid #eee; padding-top: 1rem; }
+        .button-group { margin-top: 1rem; display: flex; gap: 1rem; }
+        button { padding: 0.5rem 1rem; cursor: pointer; }
         #diagram-container { width: 100%; height: 100%; }
+        #explanation { background: #f9f9f9; padding: 1rem; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -21,16 +25,28 @@
         <div class="editor">
             <textarea id="source" placeholder="Paste your COBOL source code here...">000100 IDENTIFICATION DIVISION.
 000200 PROCEDURE DIVISION.
+* The main entry point of the program.
 000300 MAIN-PARA.
 000400     PERFORM SUB-PARA.
 000500     STOP RUN.
+* Performs the sub-logic.
 000600 SUB-PARA.
 000700     EXIT.</textarea>
-            <button onclick="generateDiagram()">Visualize</button>
+            <div class="button-group">
+                <button onclick="generateDiagram()">Visualize</button>
+                <button onclick="explainCode()">Explain</button>
+            </div>
         </div>
-        <div class="preview">
-            <div id="diagram-container"></div>
+        <div class="visualization">
+            <div class="preview">
+                <div id="diagram-container"></div>
+            </div>
         </div>
+    </div>
+
+    <div class="explanation-container">
+        <h2>Explanation</h2>
+        <div id="explanation">Click "Explain" to see a breakdown of the code.</div>
     </div>
 
     <script>
@@ -59,6 +75,30 @@
                 });
             } catch (err) {
                 container.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
+            }
+        }
+
+        async function explainCode() {
+            const source = document.getElementById('source').value;
+            const explanationDiv = document.getElementById('explanation');
+            explanationDiv.innerHTML = "Generating explanation...";
+
+            try {
+                const response = await fetch('/explain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    explanationDiv.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                explanationDiv.innerHTML = marked.parse(data.explanation);
+            } catch (err) {
+                explanationDiv.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
             }
         }
     </script>

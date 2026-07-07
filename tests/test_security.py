@@ -1,9 +1,9 @@
 import pytest
 from pathlib import Path
 from cobviz.security import read_cobol_source, validate_cobol_path
-from cobviz.parser import parse_cobol_source, MAX_PARAGRAPHS
+from cobviz.parser import parse_cobol_source, MAX_PARAGRAPHS, CobolModel
 from cobviz.sanitize import sanitize_mermaid_label, sanitize_node_id
-from cobviz.mermaid import generate_mermaid_flowchart, CobolModel
+from cobviz.mermaid import generate_mermaid_flowchart
 
 
 def test_validate_cobol_path_accepts_allowed_extension(tmp_path: Path) -> None:
@@ -66,9 +66,11 @@ def test_complexity_limit_paragraphs() -> None:
 def test_mermaid_injection_prevention() -> None:
     model = CobolModel(
         paragraphs=('PARA"; ERROR',),
-        edges=(('PARA"; ERROR', 'TARGET'),)
+        edges=(('PARA"; ERROR', 'TARGET'),),
+        paragraph_comments={}
     )
     diagram = generate_mermaid_flowchart(model)
+    # PARA"; ERROR becomes PARA___ERROR
     assert 'PARA___ERROR["PARA&quot;; ERROR"]' in diagram
     assert 'PARA___ERROR --> TARGET' in diagram
 
