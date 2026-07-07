@@ -1,15 +1,37 @@
 from __future__ import annotations
 
 import os
+import tempfile
+import shutil
+import time
+from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 from .parser import parse_cobol_source
 from .mermaid import generate_mermaid_flowchart, generate_architecture_diagram
 from .explainer import explain_cobol_program, explain_architecture
+from .repository import clone_repo, find_cobol_files
 
 app = Flask(__name__)
 
 # Security: Limit payload size for web requests (10MB)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+
+# Security: Track active repo directories to prevent unauthorized file access/deletion
+# Key: path (str), Value: creation_time (float)
+ACTIVE_REPOS = {}
+
+def cleanup_stale_repos(max_age_seconds=3600):
+    """Remove temporary directories older than max_age_seconds."""
+    now = time.time()
+    to_delete = []
+    for path, created_at in ACTIVE_REPOS.items():
+        if now - created_at > max_age_seconds:
+            to_delete.append(path)
+
+    for path in to_delete:
+        if os.path.exists(path):
+            shutil.rmtree(path, ignore_errors=True)
+        del ACTIVE_REPOS[path]
 
 @app.route("/")
 def index():
@@ -64,6 +86,77 @@ def architecture():
         return jsonify({"diagram": diagram, "explanation": explanation})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/clone", methods=["POST"])
+def clone():
+    cleanup_stale_repos()
+    repo_url = request.json.get("url", "")
+    if not repo_url:
+        return jsonify({"error": "No repository URL provided"}), 400
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        clone_repo(repo_url, temp_dir)
+        files = find_cobol_files(temp_dir)
+        # Track the directory as active
+        ACTIVE_REPOS[temp_dir] = time.time()
+        # Convert Path objects to strings for JSON serialization
+        file_list = [str(f) for f in files]
+        return jsonify({"files": file_list, "repo_path": temp_dir})
+    except Exception as e:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/analyze-file", methods=["POST"])
+def analyze_file():
+    repo_path = request.json.get("repo_path", "")
+    file_rel_path = request.json.get("file_path", "")
+
+    if not repo_path or not file_rel_path:
+        return jsonify({"error": "Missing repository path or file path"}), 400
+
+    # Security: Ensure the repo_path is one we actually created
+    if repo_path not in ACTIVE_REPOS:
+        return jsonify({"error": "Unauthorized or expired repository session"}), 403
+
+    # Security: Ensure the file is within the temp directory
+    try:
+        # Use Path.resolve() to prevent '..' traversal and compare against real repo root
+        repo_root = Path(repo_path).resolve()
+        full_path = (repo_root / file_rel_path).resolve()
+
+        if not str(full_path).startswith(str(repo_root)):
+            return jsonify({"error": "Invalid file path"}), 403
+
+        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+            source = f.read()
+
+        model = parse_cobol_source(source)
+        diagram = generate_mermaid_flowchart(model)
+        explanation = explain_cobol_program(model)
+        arch_diagram = generate_architecture_diagram(model)
+        arch_explanation = explain_architecture(model)
+
+        return jsonify({
+            "source": source,
+            "diagram": diagram,
+            "explanation": explanation,
+            "arch_diagram": arch_diagram,
+            "arch_explanation": arch_explanation
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/cleanup", methods=["POST"])
+def cleanup():
+    repo_path = request.json.get("repo_path", "")
+    # Security: Only allow deletion of directories we tracked
+    if repo_path in ACTIVE_REPOS:
+        if os.path.exists(repo_path):
+            shutil.rmtree(repo_path, ignore_errors=True)
+        del ACTIVE_REPOS[repo_path]
+    return jsonify({"status": "success"})
 
 def run_web(host="127.0.0.1", port=5000, debug=False):
     app.run(host=host, port=port, debug=debug)

@@ -21,13 +21,26 @@
         .tabs { display: flex; gap: 1rem; margin-bottom: 0.5rem; }
         .tab { padding: 0.5rem 1rem; cursor: pointer; background: #eee; border: none; }
         .tab.active { background: #ccc; font-weight: bold; }
+        #file-list { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; border: 1px solid #ddd; margin-top: 1rem; }
+        #file-list li { padding: 0.5rem; cursor: pointer; border-bottom: 1px solid #eee; }
+        #file-list li:hover { background: #f0f0f0; }
+        #file-list li.selected { background: #e0e0e0; font-weight: bold; }
+        .repo-input { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .repo-input input { flex: 1; padding: 0.5rem; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <h1>COBOL to Mermaid Visualizer</h1>
     <div class="container">
         <div class="editor">
-            <textarea id="source" placeholder="Paste your COBOL source code here...">000100 IDENTIFICATION DIVISION.
+            <div class="tabs">
+                <button id="manual-tab" class="tab active" onclick="switchEditor('manual')">Manual Input</button>
+                <button id="repo-tab" class="tab" onclick="switchEditor('repo')">Git Repository</button>
+            </div>
+
+            <div id="manual-input-container">
+                <textarea id="source" placeholder="Paste your COBOL source code here...">000100 IDENTIFICATION DIVISION.
 000150 ENVIRONMENT DIVISION.
 000160 INPUT-OUTPUT SECTION.
 000170 FILE-CONTROL.
@@ -40,10 +53,26 @@
 * Performs the sub-logic.
 000600 SUB-PARA.
 000700     EXIT.</textarea>
-            <div class="button-group">
-                <button onclick="visualizeFlow()">Visualize Flow</button>
-                <button onclick="visualizeArchitecture()">Visualize Architecture</button>
-                <button onclick="explainCode()">Explain Logic</button>
+                <div class="button-group">
+                    <button onclick="visualizeFlow()">Visualize Flow</button>
+                    <button onclick="visualizeArchitecture()">Visualize Architecture</button>
+                    <button onclick="explainCode()">Explain Logic</button>
+                </div>
+            </div>
+
+            <div id="repo-input-container" class="hidden">
+                <div class="repo-input">
+                    <input type="text" id="repo-url" placeholder="https://github.com/user/repo.git">
+                    <button onclick="cloneRepo()">Connect</button>
+                </div>
+                <p id="repo-status"></p>
+                <ul id="file-list"></ul>
+                <div id="repo-actions" class="hidden">
+                    <div class="button-group">
+                        <button onclick="analyzeSelectedFile()">Analyze Selected File</button>
+                        <button onclick="cleanupRepo()">Disconnect</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="visualization">
@@ -65,11 +94,135 @@
     <script>
         mermaid.initialize({ startOnLoad: false });
         let currentView = 'flow';
+        let currentRepoPath = null;
+        let selectedFile = null;
 
         function switchView(view) {
             currentView = view;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.visualization .tab').forEach(t => t.classList.remove('active'));
             document.getElementById(view + '-tab').classList.add('active');
+        }
+
+        function switchEditor(mode) {
+            document.querySelectorAll('.editor .tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(mode + '-tab').classList.add('active');
+
+            if (mode === 'manual') {
+                document.getElementById('manual-input-container').classList.remove('hidden');
+                document.getElementById('repo-input-container').classList.add('hidden');
+            } else {
+                document.getElementById('manual-input-container').classList.add('hidden');
+                document.getElementById('repo-input-container').classList.remove('hidden');
+            }
+        }
+
+        async function cloneRepo() {
+            const url = document.getElementById('repo-url').value;
+            const status = document.getElementById('repo-status');
+            const fileList = document.getElementById('file-list');
+            const actions = document.getElementById('repo-actions');
+
+            if (!url) return;
+
+            status.innerText = "Cloning repository...";
+            fileList.innerHTML = "";
+            actions.classList.add('hidden');
+
+            try {
+                const response = await fetch('/clone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    status.innerHTML = `<span style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</span>`;
+                    return;
+                }
+
+                currentRepoPath = data.repo_path;
+                status.innerText = `Found ${data.files.length} COBOL files.`;
+
+                if (data.files.length === 0) {
+                    fileList.innerHTML = "<li>No COBOL files found in repository.</li>";
+                } else {
+                    data.files.forEach(file => {
+                        const li = document.createElement('li');
+                        li.innerText = file;
+                        li.onclick = () => {
+                            document.querySelectorAll('#file-list li').forEach(el => el.classList.remove('selected'));
+                            li.classList.add('selected');
+                            selectedFile = file;
+                        };
+                        fileList.appendChild(li);
+                    });
+                    actions.classList.remove('hidden');
+                }
+            } catch (err) {
+                status.innerHTML = `<span style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</span>`;
+            }
+        }
+
+        async function analyzeSelectedFile() {
+            if (!currentRepoPath || !selectedFile) {
+                alert("Please select a file first.");
+                return;
+            }
+
+            const container = document.getElementById('diagram-container');
+            const explanationDiv = document.getElementById('explanation');
+            const sourceTextarea = document.getElementById('source');
+
+            container.innerHTML = "Analyzing...";
+            explanationDiv.innerHTML = "Analyzing...";
+
+            try {
+                const response = await fetch('/analyze-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repo_path: currentRepoPath, file_path: selectedFile })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    container.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</p>`;
+                    return;
+                }
+
+                // Sync source editor just in case
+                sourceTextarea.value = data.source;
+
+                // Render based on current view preference, but default to flow for file analysis
+                if (currentView === 'flow') {
+                    renderMermaid(data.diagram);
+                    explanationDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.explanation));
+                    document.getElementById('explanation-title').innerText = "Logic Breakdown";
+                } else {
+                    renderMermaid(data.arch_diagram);
+                    explanationDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.arch_explanation));
+                    document.getElementById('explanation-title').innerText = "Architectural Overview";
+                }
+            } catch (err) {
+                container.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</p>`;
+            }
+        }
+
+        async function cleanupRepo() {
+            if (!currentRepoPath) return;
+
+            await fetch('/cleanup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repo_path: currentRepoPath })
+            });
+
+            currentRepoPath = null;
+            selectedFile = null;
+            document.getElementById('file-list').innerHTML = "";
+            document.getElementById('repo-status').innerText = "Disconnected.";
+            document.getElementById('repo-actions').classList.add('hidden');
+            document.getElementById('repo-url').value = "";
         }
 
         async function visualizeFlow() {
