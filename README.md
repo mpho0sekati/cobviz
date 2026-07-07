@@ -1,17 +1,26 @@
-# COBOL Visualization Tool (`cobviz`)
+# COBOL Visualization & Explanation Tool (`cobviz`)
 
-`cobviz` is a secure, modern tool designed to help developers understand legacy COBOL systems by automatically generating Mermaid diagrams and textual logic breakdowns from source code.
+## 🎯 What we are building
+`cobviz` is an automated tool designed to help developers and modernization teams understand legacy COBOL source code. It transforms complex, procedural COBOL logic into:
+1. **Interactive Mermaid Diagrams**: Visualizing the control flow and paragraph relationships.
+2. **Textual Logic Breakdowns**: Human-readable explanations of what each part of the code does.
 
-## 🚀 Features
+The goal is to reduce the time spent manually tracing legacy systems and provide a secure way to analyze sensitive codebases.
 
-- **Automated Visualization**: Generates Mermaid flowcharts from COBOL `PROCEDURE DIVISION` structure.
-- **Context-Aware Explanation**: Breaks down COBOL logic into human-readable summaries, utilizing source comments for better context.
-- **Web Interface**: A responsive, interactive UI for pasting code and instantly viewing diagrams and explanations.
-- **CLI Tool**: Powerful command-line interface for batch processing and integration into CI/CD pipelines.
-- **Security-First Design**: Built with enterprise security in mind to safely process sensitive legacy code.
+## ⚙️ How it works
+The tool operates through a series of specialized modules:
+- **Parser**: Scans the COBOL source to identify paragraphs, `PERFORM` statements, and associated comments. It handles common legacy formatting like 6-digit sequence numbers and trailing periods.
+- **Security Engine**: Validates inputs to prevent path traversal, filters binary content, and enforces resource limits (max paragraphs/edges) to prevent Denial of Service.
+- **Visualization Engine**: Converts the parsed control flow into sanitized Mermaid.js syntax, ensuring the output is safe for web rendering.
+- **Explainer**: Correlates structural code analysis with source comments to generate a structured, Markdown-formatted breakdown of the program's logic.
 
-## 🛠️ Installation
+## 🛠️ Setup
 
+### Prerequisites
+- Python 3.10 or higher
+- `pip` (Python package installer)
+
+### Installation Steps
 1. **Clone the repository**:
    ```bash
    git clone <repository-url>
@@ -23,61 +32,33 @@
    pip install -r requirements.txt
    ```
 
-3. **Install the package locally** (optional):
+3. **Verify the installation**:
    ```bash
-   pip install -e .
+   PYTHONPATH=. python3 -m cobviz.cli --help
    ```
 
 ## 📖 Usage
 
-### Command Line Interface (CLI)
-
-The `cobviz` tool uses subcommands for different operations.
-
-#### Generate a Diagram
-Extracts the control flow from a COBOL file and outputs a Mermaid diagram.
+### Web Interface (Recommended)
+Launch an interactive UI to paste and analyze COBOL code:
 ```bash
-# Basic usage
-PYTHONPATH=. python3 -m cobviz.cli generate path/to/source.cbl
-
-# Save output to a file
-PYTHONPATH=. python3 -m cobviz.cli generate path/to/source.cbl --output diagram.mmd
-
-# Set maximum file size limit
-PYTHONPATH=. python3 -m cobviz.cli generate path/to/source.cbl --max-size 5242880
-```
-
-#### Launch the Web Interface
-Starts a local Flask server for interactive use.
-```bash
-# Launch on default port (5000)
 PYTHONPATH=. python3 -m cobviz.cli serve
+```
+Then open `http://127.0.0.1:5000` in your browser.
 
-# Specify host and port
-PYTHONPATH=. python3 -m cobviz.cli serve --host 0.0.0.0 --port 8080
+### Command Line
+Generate diagrams directly from files:
+```bash
+PYTHONPATH=. python3 -m cobviz.cli generate path/to/source.cbl --output diagram.mmd
 ```
 
-### Web Interface
-Once the server is running, navigate to `http://127.0.0.1:5000` in your browser.
-- **Visualize**: Paste COBOL code and click "Visualize" to see the Mermaid flowchart.
-- **Explain**: Click "Explain" to get a detailed textual breakdown of the program's structure and logic.
-
-## 🔒 Security Hardenings
-
-`cobviz` is hardened against common vulnerabilities to ensure user data protection:
-
-- **Path Traversal Protection**: File access is strictly restricted to the current working directory.
-- **Denial of Service (DoS) Mitigation**: The parser enforces strict limits on the number of paragraphs and control flow edges to prevent resource exhaustion.
-- **Output Sanitization**: All Mermaid node IDs and labels are sanitized and escaped to prevent diagram injection and XSS risks.
-- **Binary Content Rejection**: Rejects files containing NULL bytes to prevent accidental processing of non-text data.
+## 🔒 Security Features
+- **Sandboxed File Access**: Restricts operations to the current working directory.
+- **Resource Limiting**: Prevents processing of excessively complex files.
+- **Output Sanitization**: Protects against injection in generated diagrams.
 
 ## 🧪 Testing
-
-Run the comprehensive test suite to ensure everything is working correctly:
+Run the test suite to verify your environment:
 ```bash
-PYTHONPATH=. pytest
+PYTHONPATH=. python3 -m pytest
 ```
-
-## 📜 License
-
-This project is licensed under the MIT License - see the `LICENSE` file for details.
