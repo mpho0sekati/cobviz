@@ -42,8 +42,16 @@ The tool operates through a series of specialized modules:
 
 `cobviz` can be hosted in the cloud to provide a persistent web interface for your team.
 
-### Docker (Recommended)
-Build and run the container locally or in any cloud provider that supports Docker:
+### Deploy to Render (Recommended)
+`cobviz` is configured for easy deployment on [Render](https://render.com/).
+
+1. Fork this repository on GitHub.
+2. Create a new **Blueprint** on Render.
+3. Connect your fork.
+4. Render will automatically build the Docker image and deploy the service.
+
+### Docker
+Build and run the container locally:
 ```bash
 # Build the image
 docker build -t cobviz .
@@ -51,13 +59,6 @@ docker build -t cobviz .
 # Run the container
 docker run -p 5000:5000 cobviz
 ```
-
-### Cloud Platforms
-You can easily deploy `cobviz` to platforms like **Heroku**, **Railway**, or **Render**:
-1. Connect your repository to the platform.
-2. The platform will automatically detect the `Dockerfile` or `requirements.txt`.
-3. Set the start command to `gunicorn --bind 0.0.0.0:$PORT cobviz.web:app`.
-4. Your browser-based interface will be available at the provided URL.
 
 ## 📖 Usage
 

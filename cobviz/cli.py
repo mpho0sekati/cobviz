@@ -44,14 +44,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         run_web(host=args.host, port=args.port, debug=args.debug)
         return 0
 
-    if args.command == "generate" or (not args.command and hasattr(args, "source")):
-        # Compatibility with old single-command CLI if possible
-        source = getattr(args, "source", None)
-        if not source:
-             parser.print_help()
-             return 1
-
-        source_path = validate_cobol_path(source)
+    if args.command == "generate":
+        source_path = validate_cobol_path(args.source)
         source_text = read_cobol_source(source_path, max_size=args.max_size)
         model = parse_cobol_source(source_text)
         diagram = generate_mermaid_flowchart(model)

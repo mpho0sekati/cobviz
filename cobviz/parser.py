@@ -42,16 +42,16 @@ def parse_cobol_source(source: str) -> CobolModel:
     pending_comments: list[str] = []
 
     for line in lines:
-        # Extract SELECT statements for files
-        for select_match in SELECT_PATTERN.finditer(line):
-            file_name = select_match.group(1).upper()
-            if file_name not in files:
-                files.append(file_name)
-
         comment_match = COMMENT_PATTERN.match(line)
         if comment_match:
             pending_comments.append(comment_match.group(1).strip())
             continue
+
+        # Extract SELECT statements for files - skip if it is a comment line (handled above)
+        for select_match in SELECT_PATTERN.finditer(line):
+            file_name = select_match.group(1).upper()
+            if file_name not in files:
+                files.append(file_name)
 
         # Check for division headers
         div_match = re.search(r"([A-Z-]+ DIVISION)", line.upper())

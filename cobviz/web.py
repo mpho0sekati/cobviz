@@ -8,6 +8,9 @@ from .explainer import explain_cobol_program, explain_architecture
 
 app = Flask(__name__)
 
+# Security: Limit payload size for web requests (10MB)
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -17,6 +20,10 @@ def generate():
     source = request.json.get("source", "")
     if not source:
         return jsonify({"error": "No source provided"}), 400
+
+    # Enforce size limit on the source string itself
+    if len(source.encode('utf-8')) > app.config['MAX_CONTENT_LENGTH']:
+        return jsonify({"error": "Source code too large"}), 413
 
     try:
         model = parse_cobol_source(source)
@@ -31,6 +38,9 @@ def explain():
     if not source:
         return jsonify({"error": "No source provided"}), 400
 
+    if len(source.encode('utf-8')) > app.config['MAX_CONTENT_LENGTH']:
+        return jsonify({"error": "Source code too large"}), 413
+
     try:
         model = parse_cobol_source(source)
         explanation = explain_cobol_program(model)
@@ -43,6 +53,9 @@ def architecture():
     source = request.json.get("source", "")
     if not source:
         return jsonify({"error": "No source provided"}), 400
+
+    if len(source.encode('utf-8')) > app.config['MAX_CONTENT_LENGTH']:
+        return jsonify({"error": "Source code too large"}), 413
 
     try:
         model = parse_cobol_source(source)

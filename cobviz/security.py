@@ -26,7 +26,9 @@ def validate_cobol_path(path: Path) -> Path:
 
     # To prevent path traversal, we restrict access to files within the current working directory.
     cwd = Path.cwd().resolve()
-    if not str(resolved).startswith(str(cwd)):
+    try:
+        resolved.relative_to(cwd)
+    except ValueError:
         raise ValueError(f"Path traversal detected: {resolved} is outside of the working directory {cwd}")
 
     return resolved
