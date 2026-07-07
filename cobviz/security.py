@@ -10,17 +10,24 @@ def validate_cobol_path(path: Path) -> Path:
     if not isinstance(path, Path):
         path = Path(path)
 
-    if not path.exists() or not path.is_file():
-        raise FileNotFoundError(f"COBOL source file not found: {path}")
-
     if path.suffix.lower() not in ALLOWED_EXTENSIONS:
         raise ValueError(
             f"Unsupported COBOL extension {path.suffix}. Allowed extensions: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
 
-    resolved = path.resolve()
-    if not str(resolved).startswith(str(path.parent.resolve())):
-        raise ValueError("Invalid file path. Path traversal is not allowed.")
+    # Use Path.resolve() to handle '..' and symlinks
+    try:
+        resolved = path.resolve(strict=True)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"COBOL source file not found: {path}")
+
+    if not resolved.is_file():
+        raise ValueError(f"Path is not a file: {resolved}")
+
+    # To prevent path traversal, we restrict access to files within the current working directory.
+    cwd = Path.cwd().resolve()
+    if not str(resolved).startswith(str(cwd)):
+        raise ValueError(f"Path traversal detected: {resolved} is outside of the working directory {cwd}")
 
     return resolved
 
