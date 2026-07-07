@@ -17,6 +17,9 @@
         button { padding: 0.5rem 1rem; cursor: pointer; }
         #diagram-container { width: 100%; height: 100%; }
         #explanation { background: #f9f9f9; padding: 1rem; border-radius: 4px; }
+        .tabs { display: flex; gap: 1rem; margin-bottom: 0.5rem; }
+        .tab { padding: 0.5rem 1rem; cursor: pointer; background: #eee; border: none; }
+        .tab.active { background: #ccc; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -24,6 +27,10 @@
     <div class="container">
         <div class="editor">
             <textarea id="source" placeholder="Paste your COBOL source code here...">000100 IDENTIFICATION DIVISION.
+000150 ENVIRONMENT DIVISION.
+000160 INPUT-OUTPUT SECTION.
+000170 FILE-CONTROL.
+000180     SELECT MY-FILE ASSIGN TO "DATA.DAT".
 000200 PROCEDURE DIVISION.
 * The main entry point of the program.
 000300 MAIN-PARA.
@@ -33,11 +40,16 @@
 000600 SUB-PARA.
 000700     EXIT.</textarea>
             <div class="button-group">
-                <button onclick="generateDiagram()">Visualize</button>
-                <button onclick="explainCode()">Explain</button>
+                <button onclick="visualizeFlow()">Visualize Flow</button>
+                <button onclick="visualizeArchitecture()">Visualize Architecture</button>
+                <button onclick="explainCode()">Explain Logic</button>
             </div>
         </div>
         <div class="visualization">
+            <div class="tabs">
+                <button id="flow-tab" class="tab active" onclick="switchView('flow')">Flow Diagram</button>
+                <button id="arch-tab" class="tab" onclick="switchView('arch')">Architecture View</button>
+            </div>
             <div class="preview">
                 <div id="diagram-container"></div>
             </div>
@@ -45,14 +57,23 @@
     </div>
 
     <div class="explanation-container">
-        <h2>Explanation</h2>
-        <div id="explanation">Click "Explain" to see a breakdown of the code.</div>
+        <h2 id="explanation-title">Explanation</h2>
+        <div id="explanation">Click a button to see a breakdown of the code.</div>
     </div>
 
     <script>
         mermaid.initialize({ startOnLoad: false });
+        let currentView = 'flow';
 
-        async function generateDiagram() {
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(view + '-tab').classList.add('active');
+            // Re-render if we already have data? For now just UI switch.
+        }
+
+        async function visualizeFlow() {
+            switchView('flow');
             const source = document.getElementById('source').value;
             const container = document.getElementById('diagram-container');
 
@@ -69,13 +90,45 @@
                     return;
                 }
 
-                container.innerHTML = `<pre class="mermaid">${data.diagram}</pre>`;
-                await mermaid.run({
-                    nodes: [container.querySelector('.mermaid')]
-                });
+                renderMermaid(data.diagram);
             } catch (err) {
                 container.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
             }
+        }
+
+        async function visualizeArchitecture() {
+            switchView('arch');
+            const source = document.getElementById('source').value;
+            const container = document.getElementById('diagram-container');
+            const explanationDiv = document.getElementById('explanation');
+
+            try {
+                const response = await fetch('/architecture', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    container.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                renderMermaid(data.diagram);
+                explanationDiv.innerHTML = marked.parse(data.explanation);
+                document.getElementById('explanation-title').innerText = "Architectural Overview";
+            } catch (err) {
+                container.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
+            }
+        }
+
+        async function renderMermaid(diagram) {
+            const container = document.getElementById('diagram-container');
+            container.innerHTML = `<pre class="mermaid">${diagram}</pre>`;
+            await mermaid.run({
+                nodes: [container.querySelector('.mermaid')]
+            });
         }
 
         async function explainCode() {
@@ -97,6 +150,7 @@
                 }
 
                 explanationDiv.innerHTML = marked.parse(data.explanation);
+                document.getElementById('explanation-title').innerText = "Logic Breakdown";
             } catch (err) {
                 explanationDiv.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
             }

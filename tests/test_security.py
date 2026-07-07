@@ -67,7 +67,10 @@ def test_mermaid_injection_prevention() -> None:
     model = CobolModel(
         paragraphs=('PARA"; ERROR',),
         edges=(('PARA"; ERROR', 'TARGET'),),
-        paragraph_comments={}
+        paragraph_comments={},
+        divisions=(),
+        sections={},
+        files=()
     )
     diagram = generate_mermaid_flowchart(model)
     # PARA"; ERROR becomes PARA___ERROR

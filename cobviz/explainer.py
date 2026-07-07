@@ -39,3 +39,30 @@ def explain_cobol_program(model: CobolModel) -> str:
         lines.append("This is a linear program with no internal `PERFORM` calls.")
 
     return "\n".join(lines)
+
+
+def explain_architecture(model: CobolModel) -> str:
+    """Generate a high-level architectural overview."""
+    lines = ["## Architectural Overview", ""]
+
+    lines.append("### Program Structure")
+    if model.divisions:
+        lines.append(f"The program consists of the following divisions: {', '.join([f'`{d}`' for d in model.divisions])}.")
+
+    if model.sections:
+        lines.append(f"It is organized into {len(model.sections)} logical sections:")
+        for section, paras in model.sections.items():
+            lines.append(f"- **`{section}`**: Contains {len(paras)} paragraphs ({', '.join([f'`{p}`' for p in paras])}).")
+    else:
+        lines.append("The program has a flat structure with no explicit sections.")
+
+    lines.append("")
+    lines.append("### External Interfaces")
+    if model.files:
+        lines.append("The program interacts with the following external files:")
+        for file in model.files:
+            lines.append(f"- **`{file}`**")
+    else:
+        lines.append("No external file interfaces (SELECT statements) were identified.")
+
+    return "\n".join(lines)
