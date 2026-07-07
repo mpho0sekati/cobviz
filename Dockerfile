@@ -4,6 +4,12 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /app
 
+# Install git (required by GitPython)
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# Suppress GitPython warning and potential boot issues
+ENV GIT_PYTHON_REFRESH=quiet
+
 # Copy the requirements file into the container
 COPY requirements.txt .
 
