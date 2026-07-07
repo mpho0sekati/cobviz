@@ -1,7 +1,7 @@
 [project]
 name = "cobviz"
 version = "0.1.0"
-description = "Secure COBOL-to-Mermaid visualization CLI"
+description = "Secure COBOL-to-Mermaid visualization CLI and Web Interface"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{name = "mpho0sekati"}]
@@ -16,6 +16,13 @@ dev = ["pytest>=8.0", "bandit>=1.7", "black>=24.0"]
 
 [project.scripts]
 cobviz = "cobviz.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cobviz*"]
+
+[tool.setuptools.package-data]
+cobviz = ["templates/*.html"]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

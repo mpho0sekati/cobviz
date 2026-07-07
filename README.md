@@ -1,87 +1,71 @@
 # COBOL Visualization & Explanation Tool (`cobviz`)
 
-## 🎯 What we are building
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
 `cobviz` is an automated tool designed to help developers and modernization teams understand legacy COBOL source code. It transforms complex, procedural COBOL logic into:
 1. **Interactive Mermaid Diagrams**: Visualizing the control flow and paragraph relationships.
 2. **Architectural Views**: High-level system structure including Divisions, Sections, and File interfaces.
 3. **Textual Logic Breakdowns**: Human-readable explanations of what each part of the code does.
 
-The goal is to reduce the time spent manually tracing legacy systems and provide a secure way to analyze sensitive codebases.
+## 🚀 Quick Start (Easiest)
+
+### Cloud Hosting
+Click the **Deploy to Render** button above to host your own private instance of `cobviz` for free.
+
+### Local Setup
+The fastest way to run `cobviz` locally is using `pip`:
+```bash
+pip install .
+cobviz serve
+```
+Then open `http://127.0.0.1:5000` in your browser.
+
+---
 
 ## ⚙️ How it works
 The tool operates through a series of specialized modules:
-- **Parser**: Scans the COBOL source to identify paragraphs, divisions, sections, and `SELECT` statements. It handles common legacy formatting like 6-digit sequence numbers and trailing periods.
-- **Security Engine**: Validates inputs to prevent path traversal, filters binary content, and enforces resource limits (max paragraphs/edges) to prevent Denial of Service.
-- **Visualization Engine**: Converts the parsed control flow and architecture into sanitized Mermaid.js syntax.
-- **Explainer**: Correlates structural code analysis with source comments to generate a structured, Markdown-formatted breakdown of the program's logic and architecture.
+- **Parser**: Scans the COBOL source to identify paragraphs, divisions, sections, and `SELECT` statements.
+- **Security Engine**: Validates inputs to prevent path traversal, filters binary content, and enforces resource limits.
+- **Visualization Engine**: Converts parsed data into sanitized Mermaid.js syntax.
+- **Explainer**: Correlates structural analysis with source comments to generate Markdown-formatted breakdowns.
 
-## 🛠️ Setup & Installation
+## 🛠️ Installation & Setup
 
 ### Prerequisites
 - Python 3.10 or higher
-- `pip` (Python package installer)
 
-### Local Installation
+### Developer Setup
 1. **Clone the repository**:
    ```bash
    git clone <repository-url>
    cd cobviz
    ```
-
-2. **Install dependencies**:
+2. **Install in editable mode**:
    ```bash
-   pip install -r requirements.txt
+   pip install -e .
    ```
-
-3. **Verify the installation**:
-   ```bash
-   PYTHONPATH=. python3 -m cobviz.cli --help
-   ```
-
-## 🌐 Hosting & Deployment
-
-`cobviz` can be hosted in the cloud to provide a persistent web interface for your team.
-
-### Deploy to Render (Recommended)
-`cobviz` is configured for easy deployment on [Render](https://render.com/).
-
-1. Fork this repository on GitHub.
-2. Create a new **Blueprint** on Render.
-3. Connect your fork.
-4. Render will automatically build the Docker image and deploy the service.
-
-### Docker
-Build and run the container locally:
-```bash
-# Build the image
-docker build -t cobviz .
-
-# Run the container
-docker run -p 5000:5000 cobviz
-```
 
 ## 📖 Usage
 
 ### Web Interface
-Launch an interactive UI to paste and analyze COBOL code:
+Launch the interactive UI:
 ```bash
-PYTHONPATH=. python3 -m cobviz.cli serve
+cobviz serve
 ```
-Then open `http://127.0.0.1:5000` in your browser.
 
 ### Command Line
 Generate diagrams directly from files:
 ```bash
-PYTHONPATH=. python3 -m cobviz.cli generate path/to/source.cbl --output diagram.mmd
+cobviz generate path/to/source.cbl --output diagram.mmd
 ```
 
 ## 🔒 Security Features
 - **Sandboxed File Access**: Restricts operations to the current working directory.
-- **Resource Limiting**: Prevents processing of excessively complex files (max 500 paragraphs).
+- **Resource Limiting**: Prevents processing of excessively complex files.
 - **Output Sanitization**: Protects against injection and XSS in generated diagrams.
 
 ## 🧪 Testing
-Run the test suite to verify your environment:
+Run the test suite:
 ```bash
-PYTHONPATH=. pytest
+pytest
 ```
