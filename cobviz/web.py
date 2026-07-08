@@ -11,6 +11,9 @@ from .mermaid import generate_mermaid_flowchart, generate_architecture_diagram
 from .explainer import explain_program, explain_architecture, analyze_business_rules, security_review
 from .repository import clone_repo, find_cobol_files
 from .intelligence import create_intelligence_provider
+from .security.audit import audit_logger
+from .security.rbac import Role, Permission, has_permission
+from .security.redaction import redactor
 
 app = Flask(__name__)
 
@@ -42,10 +45,16 @@ def cleanup_stale_repos(max_age_seconds=3600):
 
 @app.route("/")
 def index():
+    audit_logger.log_event("anonymous", "page_view", "/", "success")
     return render_template("index.html")
 
 @app.route("/generate", methods=["POST"])
 def generate():
+    # RBAC: Default to viewer for now
+    role = request.headers.get("X-Role", "viewer")
+    if not has_permission(role, Permission.VIEW_DIAGRAM):
+        return jsonify({"error": "Unauthorized"}), 403
+
     source = request.json.get("source", "")
     if not source:
         return jsonify({"error": "No source provided"}), 400
@@ -55,10 +64,17 @@ def generate():
         return jsonify({"error": "Source code too large"}), 413
 
     try:
+        # Sensitive Data Detection
+        sensitive = redactor.detect_sensitive(source)
+        if sensitive:
+            audit_logger.log_event("user", "sensitive_data_detected", "source", "warning", {"types": sensitive})
+
         model = parse_cobol_source(source)
         diagram = generate_mermaid_flowchart(model)
-        return jsonify({"diagram": diagram})
+        audit_logger.log_event("user", "generate_diagram", "flow", "success")
+        return jsonify({"diagram": diagram, "warnings": sensitive})
     except Exception as e:
+        audit_logger.log_event("user", "generate_diagram", "flow", "failure", {"error": str(e)})
         return jsonify({"error": str(e)}), 500
 
 @app.route("/explain", methods=["POST"])
@@ -176,6 +192,10 @@ def ai_config():
 
 @app.route("/ai-action", methods=["POST"])
 def ai_action():
+    role = request.headers.get("X-Role", "viewer")
+    if not has_permission(role, Permission.RUN_AI):
+        return jsonify({"error": "AI actions restricted"}), 403
+
     action = request.json.get("action")
     source = request.json.get("source")
 

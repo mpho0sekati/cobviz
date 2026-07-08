@@ -15,6 +15,8 @@ class OpenAICompatibleProvider(IntelligenceProvider):
         self.model = model
 
     def _request(self, prompt: str, system_message: str = "You are a helpful assistant.") -> str:
+        # Security: Redact sensitive info before sending to cloud/enterprise
+        prompt = self._sanitize_input(prompt)
         url = f"{self.base_url}/chat/completions"
         headers = {
             "Content-Type": "application/json"

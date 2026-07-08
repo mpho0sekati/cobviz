@@ -1,12 +1,17 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
+from ..security.redaction import redactor
 
 class IntelligenceProvider(ABC):
     """
     Abstract base class for all AI/Intelligence providers in CobViz.
     Decouples the application from specific AI vendors or local models.
     """
+
+    def _sanitize_input(self, text: str) -> str:
+        """Internal helper to redact sensitive data before sending to AI."""
+        return redactor.redact(text)
 
     @abstractmethod
     def chat(self, messages: List[Dict[str, str]]) -> str:
