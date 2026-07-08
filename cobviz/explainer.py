@@ -1,9 +1,9 @@
 from __future__ import annotations
-
 from .parsers.base import ProgramModel
+from .intelligence import IntelligenceProvider
 
 
-def explain_program(model: ProgramModel) -> str:
+def explain_program(model: ProgramModel, provider: IntelligenceProvider | None = None) -> str:
     """Generate a textual breakdown of the program."""
     if not model.paragraphs:
         return f"This {model.language} program has no identifiable paragraphs or labels."
@@ -43,10 +43,18 @@ def explain_program(model: ProgramModel) -> str:
     else:
         lines.append("This is a linear program with no internal `PERFORM` calls.")
 
+    if provider:
+        lines.append("")
+        lines.append("### AI-Powered Insight")
+        # Combine comments as context
+        context = " ".join(model.paragraph_comments.values())
+        ai_explanation = provider.explain(f"Language: {model.language}\nControl Flow: {model.edges}", context=context)
+        lines.append(ai_explanation)
+
     return "\n".join(lines)
 
 
-def explain_architecture(model: ProgramModel) -> str:
+def explain_architecture(model: ProgramModel, provider: IntelligenceProvider | None = None) -> str:
     """Generate a high-level architectural overview."""
     lines = ["## Architectural Overview", ""]
 
@@ -76,4 +84,18 @@ def explain_architecture(model: ProgramModel) -> str:
     else:
         lines.append("No external file interfaces (SELECT statements) were identified.")
 
+    if provider:
+        lines.append("")
+        lines.append("### AI Architecture Analysis")
+        lines.append(provider.summarize(f"Divisions: {model.divisions}\nFiles: {model.files}"))
+
     return "\n".join(lines)
+
+def analyze_business_rules(model: ProgramModel, provider: IntelligenceProvider) -> str:
+    """Use AI to extract business rules from the program model."""
+    context = f"Language: {model.language}\nStructure: {model.sections}"
+    return provider.analyzeBusinessRules(context)
+
+def security_review(model: ProgramModel, provider: IntelligenceProvider) -> str:
+    """Use AI to perform a security review."""
+    return provider.securityReview(f"Language: {model.language}\nFiles: {model.files}")

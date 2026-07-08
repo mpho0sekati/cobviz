@@ -28,6 +28,9 @@
         .repo-input { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
         .repo-input input { flex: 1; padding: 0.5rem; }
         .hidden { display: none !important; }
+        .settings-pane { border: 1px solid #ccc; padding: 1rem; background: #fdfdfd; margin-bottom: 1rem; }
+        .settings-pane label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        .settings-pane input, .settings-pane select { width: 100%; padding: 0.5rem; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
@@ -37,6 +40,37 @@
             <div class="tabs">
                 <button id="manual-tab" class="tab active" onclick="switchEditor('manual')">Manual Input</button>
                 <button id="repo-tab" class="tab" onclick="switchEditor('repo')">Git Repository</button>
+                <button id="ai-tab" class="tab" onclick="switchEditor('ai')">AI Settings</button>
+            </div>
+
+            <div id="ai-settings-container" class="hidden">
+                <div class="settings-pane">
+                    <label>Intelligence Provider</label>
+                    <select id="ai-provider-type" onchange="toggleAiFields()">
+                        <option value="mock">Mock (Local Only)</option>
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="lm-studio">LM Studio (Local)</option>
+                        <option value="openai">OpenAI (Cloud)</option>
+                        <option value="google">Google Gemini (Cloud)</option>
+                        <option value="anthropic">Anthropic (Cloud)</option>
+                        <option value="enterprise">Internal Gateway (Enterprise)</option>
+                    </select>
+
+                    <div id="ai-url-field">
+                        <label>API Base URL</label>
+                        <input type="text" id="ai-url" placeholder="e.g., http://localhost:11434">
+                    </div>
+
+                    <div id="ai-key-field" class="hidden">
+                        <label>API Key</label>
+                        <input type="password" id="ai-key" placeholder="Enter API Key">
+                    </div>
+
+                    <label>Model Name</label>
+                    <input type="text" id="ai-model" placeholder="e.g., llama3, gpt-4">
+
+                    <button onclick="saveAiConfig()">Save Configuration</button>
+                </div>
             </div>
 
             <div id="manual-input-container">
@@ -57,6 +91,8 @@
                     <button onclick="visualizeFlow()">Visualize Flow</button>
                     <button onclick="visualizeArchitecture()">Visualize Architecture</button>
                     <button onclick="explainCode()">Explain Logic</button>
+                    <button onclick="runAiAction('business-rules')">AI Business Rules</button>
+                    <button onclick="runAiAction('security')">AI Security Review</button>
                 </div>
             </div>
 
@@ -111,12 +147,69 @@
             document.querySelectorAll('.editor .tab').forEach(t => t.classList.remove('active'));
             document.getElementById(mode + '-tab').classList.add('active');
 
-            if (mode === 'manual') {
-                document.getElementById('manual-input-container').classList.remove('hidden');
-                document.getElementById('repo-input-container').classList.add('hidden');
+            const containers = ['manual-input-container', 'repo-input-container', 'ai-settings-container'];
+            containers.forEach(c => document.getElementById(c).classList.add('hidden'));
+
+            if (mode === 'ai') {
+                document.getElementById('ai-settings-container').classList.remove('hidden');
             } else {
-                document.getElementById('manual-input-container').classList.add('hidden');
-                document.getElementById('repo-input-container').classList.remove('hidden');
+                document.getElementById(mode + '-input-container').classList.remove('hidden');
+            }
+        }
+
+        function toggleAiFields() {
+            const type = document.getElementById('ai-provider-type').value;
+            const urlField = document.getElementById('ai-url-field');
+            const keyField = document.getElementById('ai-key-field');
+
+            if (type === 'mock') {
+                urlField.classList.add('hidden');
+                keyField.classList.add('hidden');
+            } else if (['openai', 'google', 'anthropic', 'enterprise'].includes(type)) {
+                urlField.classList.remove('hidden');
+                keyField.classList.remove('hidden');
+            } else {
+                urlField.classList.remove('hidden');
+                keyField.classList.add('hidden');
+            }
+        }
+
+        async function saveAiConfig() {
+            const config = {
+                type: document.getElementById('ai-provider-type').value,
+                base_url: document.getElementById('ai-url').value,
+                api_key: document.getElementById('ai-key').value,
+                model: document.getElementById('ai-model').value
+            };
+
+            await fetch('/ai-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            alert("AI Configuration Saved.");
+        }
+
+        async function runAiAction(action) {
+            const source = document.getElementById('source').value;
+            const explanationDiv = document.getElementById('explanation');
+            explanationDiv.innerHTML = `Running AI ${action}...`;
+
+            try {
+                const response = await fetch('/ai-action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, source })
+                });
+                const data = await response.json();
+                if (data.error) {
+                    explanationDiv.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</p>`;
+                } else {
+                    explanationDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.result));
+                    document.getElementById('explanation-title').innerText = action === 'business-rules' ? "AI Business Rules" : "AI Security Review";
+                }
+            } catch (err) {
+                explanationDiv.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</p>`;
             }
         }
 

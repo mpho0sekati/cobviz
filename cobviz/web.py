@@ -8,8 +8,9 @@ from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 from .parser import parse_source, parse_cobol_source
 from .mermaid import generate_mermaid_flowchart, generate_architecture_diagram
-from .explainer import explain_program, explain_architecture
+from .explainer import explain_program, explain_architecture, analyze_business_rules, security_review
 from .repository import clone_repo, find_cobol_files
+from .intelligence import create_intelligence_provider
 
 app = Flask(__name__)
 
@@ -19,6 +20,12 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 # Security: Track active repo directories to prevent unauthorized file access/deletion
 # Key: path (str), Value: creation_time (float)
 ACTIVE_REPOS = {}
+
+# Intelligence Configuration (Global for simplicity in this version)
+AI_CONFIG = {"type": "mock"}
+
+def get_ai_provider():
+    return create_intelligence_provider(AI_CONFIG)
 
 def cleanup_stale_repos(max_age_seconds=3600):
     """Remove temporary directories older than max_age_seconds."""
@@ -65,7 +72,7 @@ def explain():
 
     try:
         model = parse_cobol_source(source)
-        explanation = explain_program(model)
+        explanation = explain_program(model, provider=get_ai_provider())
         return jsonify({"explanation": explanation})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -82,7 +89,7 @@ def architecture():
     try:
         model = parse_cobol_source(source)
         diagram = generate_architecture_diagram(model)
-        explanation = explain_architecture(model)
+        explanation = explain_architecture(model, provider=get_ai_provider())
         return jsonify({"diagram": diagram, "explanation": explanation})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -133,10 +140,11 @@ def analyze_file():
             source = f.read()
 
         model = parse_source(source, filename=file_rel_path)
+        provider = get_ai_provider()
         diagram = generate_mermaid_flowchart(model)
-        explanation = explain_program(model)
+        explanation = explain_program(model, provider=provider)
         arch_diagram = generate_architecture_diagram(model)
-        arch_explanation = explain_architecture(model)
+        arch_explanation = explain_architecture(model, provider=provider)
 
         return jsonify({
             "source": source,
@@ -157,6 +165,37 @@ def cleanup():
             shutil.rmtree(repo_path, ignore_errors=True)
         del ACTIVE_REPOS[repo_path]
     return jsonify({"status": "success"})
+
+@app.route("/ai-config", methods=["GET", "POST"])
+def ai_config():
+    global AI_CONFIG
+    if request.method == "POST":
+        AI_CONFIG = request.json
+        return jsonify({"status": "success"})
+    return jsonify(AI_CONFIG)
+
+@app.route("/ai-action", methods=["POST"])
+def ai_action():
+    action = request.json.get("action")
+    source = request.json.get("source")
+
+    if not action or not source:
+        return jsonify({"error": "Missing action or source"}), 400
+
+    try:
+        model = parse_cobol_source(source)
+        provider = get_ai_provider()
+
+        if action == "business-rules":
+            result = analyze_business_rules(model, provider)
+        elif action == "security":
+            result = security_review(model, provider)
+        else:
+            return jsonify({"error": f"Unknown action: {action}"}), 400
+
+        return jsonify({"result": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def run_web(host="127.0.0.1", port=5000, debug=False):
     app.run(host=host, port=port, debug=debug)
