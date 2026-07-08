@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from .parser import CobolModel
+from .parsers.base import ProgramModel
 from .sanitize import sanitize_mermaid_label, sanitize_node_id
 
 
-def generate_mermaid_flowchart(model: CobolModel) -> str:
+def generate_mermaid_flowchart(model: ProgramModel) -> str:
     lines = ["flowchart TD"]
 
     # Map original names to sanitized node IDs
@@ -22,7 +22,7 @@ def generate_mermaid_flowchart(model: CobolModel) -> str:
     return "\n".join(lines)
 
 
-def generate_architecture_diagram(model: CobolModel) -> str:
+def generate_architecture_diagram(model: ProgramModel) -> str:
     """Generate a high-level architecture diagram showing Sections and Files."""
     lines = ["flowchart LR"]
 

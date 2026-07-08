@@ -1,7 +1,9 @@
 import pytest
 from pathlib import Path
 from cobviz.security import read_cobol_source, validate_cobol_path
-from cobviz.parser import parse_cobol_source, MAX_PARAGRAPHS, CobolModel
+from cobviz.parser import parse_cobol_source
+from cobviz.parsers.cobol import CobolParser
+from cobviz.parsers.base import ProgramModel
 from cobviz.sanitize import sanitize_mermaid_label, sanitize_node_id
 from cobviz.mermaid import generate_mermaid_flowchart
 
@@ -58,19 +60,20 @@ def test_sanitize_node_id() -> None:
 
 
 def test_complexity_limit_paragraphs() -> None:
-    source = "\n".join([f"PARA-{i}.\n    EXIT." for i in range(MAX_PARAGRAPHS + 1)])
+    source = "\n".join([f"PARA-{i}.\n    EXIT." for i in range(CobolParser.MAX_PARAGRAPHS + 1)])
     with pytest.raises(ValueError, match="Exceeded maximum number of paragraphs"):
         parse_cobol_source(source)
 
 
 def test_mermaid_injection_prevention() -> None:
-    model = CobolModel(
+    model = ProgramModel(
         paragraphs=('PARA"; ERROR',),
         edges=(('PARA"; ERROR', 'TARGET'),),
         paragraph_comments={},
         divisions=(),
         sections={},
-        files=()
+        files=(),
+        file_usage={}
     )
     diagram = generate_mermaid_flowchart(model)
     # PARA"; ERROR becomes PARA___ERROR

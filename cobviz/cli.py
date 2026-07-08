@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .mermaid import generate_mermaid_flowchart
-from .parser import parse_cobol_source
+from .parser import parse_source
 from .security import read_cobol_source, validate_cobol_path
 from .web import run_web
 
@@ -47,7 +47,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "generate":
         source_path = validate_cobol_path(args.source)
         source_text = read_cobol_source(source_path, max_size=args.max_size)
-        model = parse_cobol_source(source_text)
+        model = parse_source(source_text, filename=str(source_path))
         diagram = generate_mermaid_flowchart(model)
 
         if args.output:

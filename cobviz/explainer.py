@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from .parser import CobolModel
+from .parsers.base import ProgramModel
 
 
-def explain_cobol_program(model: CobolModel) -> str:
-    """Generate a textual breakdown of the COBOL program."""
+def explain_program(model: ProgramModel) -> str:
+    """Generate a textual breakdown of the program."""
     if not model.paragraphs:
-        return "This COBOL program has no identifiable paragraphs in its PROCEDURE DIVISION."
+        return f"This {model.language} program has no identifiable paragraphs or labels."
 
-    lines = ["## COBOL Program Breakdown", ""]
+    lines = [f"## {model.language} Program Breakdown", ""]
 
     # Identify entry point (usually first paragraph)
     entry_para = model.paragraphs[0]
@@ -46,7 +46,7 @@ def explain_cobol_program(model: CobolModel) -> str:
     return "\n".join(lines)
 
 
-def explain_architecture(model: CobolModel) -> str:
+def explain_architecture(model: ProgramModel) -> str:
     """Generate a high-level architectural overview."""
     lines = ["## Architectural Overview", ""]
 

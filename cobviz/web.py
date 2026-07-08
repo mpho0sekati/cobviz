@@ -6,9 +6,9 @@ import shutil
 import time
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify
-from .parser import parse_cobol_source
+from .parser import parse_source, parse_cobol_source
 from .mermaid import generate_mermaid_flowchart, generate_architecture_diagram
-from .explainer import explain_cobol_program, explain_architecture
+from .explainer import explain_program, explain_architecture
 from .repository import clone_repo, find_cobol_files
 
 app = Flask(__name__)
@@ -65,7 +65,7 @@ def explain():
 
     try:
         model = parse_cobol_source(source)
-        explanation = explain_cobol_program(model)
+        explanation = explain_program(model)
         return jsonify({"explanation": explanation})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -132,9 +132,9 @@ def analyze_file():
         with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
             source = f.read()
 
-        model = parse_cobol_source(source)
+        model = parse_source(source, filename=file_rel_path)
         diagram = generate_mermaid_flowchart(model)
-        explanation = explain_cobol_program(model)
+        explanation = explain_program(model)
         arch_diagram = generate_architecture_diagram(model)
         arch_explanation = explain_architecture(model)
 
