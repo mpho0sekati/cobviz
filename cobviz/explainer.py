@@ -22,6 +22,11 @@ def explain_cobol_program(model: CobolModel) -> str:
         lines.append(f"#### `{para}`")
         lines.append(f"- **Purpose:** {comment}")
 
+        # Files used by this paragraph
+        files = model.file_usage.get(para, [])
+        if files:
+            lines.append(f"- **File Access:** Interacts with {', '.join([f'`{f}`' for f in files])}")
+
         # Find PERFORMs from this paragraph
         calls = [target for src, target in model.edges if src == para]
         if calls:
@@ -44,6 +49,12 @@ def explain_cobol_program(model: CobolModel) -> str:
 def explain_architecture(model: CobolModel) -> str:
     """Generate a high-level architectural overview."""
     lines = ["## Architectural Overview", ""]
+
+    if model.file_usage:
+        lines.append("### Key Data Flows")
+        for para, files in model.file_usage.items():
+            lines.append(f"- Paragraph `{para}` accesses: {', '.join([f'`{f}`' for f in files])}")
+        lines.append("")
 
     lines.append("### Program Structure")
     if model.divisions:

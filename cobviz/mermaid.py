@@ -54,4 +54,11 @@ def generate_architecture_diagram(model: CobolModel) -> str:
         tgt_id = sanitize_node_id(target)
         lines.append(f"    {src_id} --> {tgt_id}")
 
+    # Edges between paragraphs and files they use
+    for para, files in model.file_usage.items():
+        para_id = sanitize_node_id(para)
+        for file_name in files:
+            file_id = sanitize_node_id(file_name)
+            lines.append(f"    {para_id} -.-> {file_id}")
+
     return "\n".join(lines)

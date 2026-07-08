@@ -92,7 +92,11 @@
     </div>
 
     <script>
-        mermaid.initialize({ startOnLoad: false });
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: true, htmlLabels: true }
+        });
         let currentView = 'flow';
         let currentRepoPath = null;
         let selectedFile = null;
@@ -278,12 +282,54 @@
 
         async function renderMermaid(diagram) {
             const container = document.getElementById('diagram-container');
-            // Mermaid internally handles its own parsing, but we sanitize the container first?
-            // Actually Mermaid renders SVG into the container.
             container.innerHTML = `<pre class="mermaid">${diagram}</pre>`;
-            await mermaid.run({
-                nodes: [container.querySelector('.mermaid')]
+
+            try {
+                await mermaid.run({
+                    nodes: [container.querySelector('.mermaid')]
+                });
+
+                // Add interactivity: click on nodes to jump to explanation
+                const nodes = container.querySelectorAll('.node');
+                nodes.forEach(node => {
+                    node.style.cursor = 'pointer';
+                    node.addEventListener('click', () => {
+                        const label = node.querySelector('.nodeLabel')?.innerText ||
+                                      node.querySelector('text')?.textContent;
+                        if (label) {
+                            highlightExplanation(label.trim());
+                        }
+                    });
+                });
+            } catch (err) {
+                console.error("Mermaid render error:", err);
+            }
+        }
+
+        function highlightExplanation(label) {
+            // Try to find the header in the explanation
+            const headers = document.querySelectorAll('#explanation h4');
+            let found = false;
+            headers.forEach(h => {
+                if (h.innerText.includes(label)) {
+                    h.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    h.style.backgroundColor = '#ffffcc';
+                    setTimeout(() => h.style.backgroundColor = 'transparent', 2000);
+                    found = true;
+                }
             });
+
+            if (!found) {
+                // If not in Logic Breakdown, check Architectural Overview
+                const items = document.querySelectorAll('#explanation li');
+                items.forEach(li => {
+                    if (li.innerText.includes(label)) {
+                        li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        li.style.backgroundColor = '#ffffcc';
+                        setTimeout(() => li.style.backgroundColor = 'transparent', 2000);
+                    }
+                });
+            }
         }
 
         async function explainCode() {

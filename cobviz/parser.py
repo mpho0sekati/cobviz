@@ -12,6 +12,7 @@ class CobolModel:
     divisions: tuple[str, ...]
     sections: dict[str, tuple[str, ...]]  # Section Name -> List of Paragraphs
     files: tuple[str, ...]
+    file_usage: dict[str, set[str]]  # Paragraph -> Set of Files used
 
 
 PARAGRAPH_PATTERN = re.compile(r"^(?:[0-9]{6})?\s*([A-Za-z0-9-]+)\.\s*", re.MULTILINE)
@@ -19,6 +20,7 @@ SECTION_PATTERN = re.compile(r"^(?:[0-9]{6})?\s*([A-Za-z0-9-]+)\s+SECTION\.\s*$"
 PERFORM_PATTERN = re.compile(r"\bPERFORM\s+([A-Za-z0-9-]+)\b", re.IGNORECASE)
 COMMENT_PATTERN = re.compile(r"^(?:[0-9]{6})?\* (.*)$")
 SELECT_PATTERN = re.compile(r"\bSELECT\s+([A-Za-z0-9-]+)\b", re.IGNORECASE)
+FILE_OP_PATTERN = re.compile(r"\b(OPEN|CLOSE|READ|START|DELETE|REWRITE)\s+([A-Za-z0-9-]+)\b", re.IGNORECASE)
 
 # Security Constants
 MAX_PARAGRAPHS = 500
@@ -36,6 +38,7 @@ def parse_cobol_source(source: str) -> CobolModel:
     divisions: list[str] = []
     sections: dict[str, list[str]] = {}
     files: list[str] = []
+    file_usage: dict[str, set[str]] = {}
 
     current_para: str | None = None
     current_section: str | None = None
@@ -108,11 +111,20 @@ def parse_cobol_source(source: str) -> CobolModel:
                 target = perform_match.group(1).upper()
                 edges.append((current_para, target))
 
+            # Detect file usage
+            for op_match in FILE_OP_PATTERN.finditer(content_line):
+                file_name = op_match.group(2).upper()
+                if file_name in files:
+                    if current_para not in file_usage:
+                        file_usage[current_para] = set()
+                    file_usage[current_para].add(file_name)
+
     return CobolModel(
         paragraphs=tuple(paragraphs),
         edges=tuple(edges),
         paragraph_comments=paragraph_comments,
         divisions=tuple(divisions),
         sections={k: tuple(v) for k, v in sections.items()},
-        files=tuple(files)
+        files=tuple(files),
+        file_usage=file_usage
     )
