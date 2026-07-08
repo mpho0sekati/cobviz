@@ -1,6 +1,0 @@
-2026-07-08 11:28:00,897 - {"timestamp": 1783510080.8977284, "user": "anonymous", "event": "page_view", "resource": "/", "status": "success", "details": {}}
-2026-07-08 11:28:00,906 - {"timestamp": 1783510080.9061475, "user": "user", "event": "generate_diagram", "resource": "flow", "status": "success", "details": {}}
-2026-07-08 11:28:00,919 - {"timestamp": 1783510080.9193027, "user": "user", "event": "generate_diagram", "resource": "flow", "status": "failure", "details": {"error": "Exceeded maximum number of paragraphs (500)"}}
-2026-07-08 11:31:43,573 - {"timestamp": 1783510303.572953, "user": "anonymous", "event": "page_view", "resource": "/", "status": "success", "details": {}}
-2026-07-08 11:31:44,518 - {"timestamp": 1783510304.5183504, "user": "user", "event": "sensitive_data_detected", "resource": "source", "status": "warning", "details": {"types": ["email"]}}
-2026-07-08 11:31:44,518 - {"timestamp": 1783510304.5188782, "user": "user", "event": "generate_diagram", "resource": "flow", "status": "success", "details": {}}
