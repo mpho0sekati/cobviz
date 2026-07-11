@@ -1,24 +1,30 @@
 from __future__ import annotations
+from pathlib import Path
+from .parsers.base import ProgramModel, LanguageParser
+from .parsers.cobol import CobolParser
+from .parsers.pli import PLIParser
+from .parsers.rpg import RPGParser
+from .parsers.natural import NaturalParser
+from .parsers.assembler import AssemblerParser
 
-import re
-from dataclasses import dataclass
-from typing import Iterable
+def get_parser_for_file(filename: str) -> LanguageParser:
+    ext = Path(filename).suffix.lower()
+    if ext in ('.cob', '.cbl', '.cobol', '.cpy'):
+        return CobolParser()
+    elif ext in ('.pli', '.pl1'):
+        return PLIParser()
+    elif ext in ('.rpg', '.rpgle'):
+        return RPGParser()
+    elif ext in ('.nsn', '.nsp', '.nsh'):
+        return NaturalParser()
+    elif ext in ('.asm', '.s'):
+        return AssemblerParser()
+    return CobolParser() # Default to COBOL
 
+def parse_source(source: str, filename: str = "program.cob") -> ProgramModel:
+    parser = get_parser_for_file(filename)
+    return parser.parse(source)
 
-@dataclass(frozen=True)
-class CobolModel:
-    paragraphs: tuple[str, ...]
-    performs: tuple[tuple[str, str], ...]
-
-
-PARAGRAPH_PATTERN = re.compile(r"^([A-Za-z0-9-]+)\.?\s*$", re.MULTILINE)
-PERFORM_PATTERN = re.compile(r"\bPERFORM\s+([A-Za-z0-9-]+)\b", re.IGNORECASE)
-
-
-def parse_cobol_source(source: str) -> CobolModel:
-    paragraphs = tuple({match.group(1).upper() for match in PARAGRAPH_PATTERN.finditer(source)})
-    performs = tuple(
-        (match.group(0).upper(), match.group(1).upper())
-        for match in PERFORM_PATTERN.finditer(source)
-    )
-    return CobolModel(paragraphs=paragraphs, performs=performs)
+# Maintain compatibility with existing code that might still call parse_cobol_source
+def parse_cobol_source(source: str) -> ProgramModel:
+    return CobolParser().parse(source)

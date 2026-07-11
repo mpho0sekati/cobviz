@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COBOL Visualization Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; }
+        .container { display: flex; gap: 2rem; min-height: 60vh; }
+        .editor, .visualization { flex: 1; display: flex; flex-direction: column; }
+        textarea { flex: 1; font-family: monospace; padding: 1rem; min-height: 400px; }
+        .preview { border: 1px solid #ccc; overflow: auto; padding: 1rem; flex: 1; min-height: 400px; }
+        .explanation-container { margin-top: 2rem; border-top: 2px solid #eee; padding-top: 1rem; }
+        .button-group { margin-top: 1rem; display: flex; gap: 1rem; }
+        button { padding: 0.5rem 1rem; cursor: pointer; }
+        #diagram-container { width: 100%; height: 100%; }
+        #explanation { background: #f9f9f9; padding: 1rem; border-radius: 4px; }
+        .tabs { display: flex; gap: 1rem; margin-bottom: 0.5rem; }
+        .tab { padding: 0.5rem 1rem; cursor: pointer; background: #eee; border: none; }
+        .tab.active { background: #ccc; font-weight: bold; }
+        #file-list { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; border: 1px solid #ddd; margin-top: 1rem; }
+        #file-list li { padding: 0.5rem; cursor: pointer; border-bottom: 1px solid #eee; }
+        #file-list li:hover { background: #f0f0f0; }
+        #file-list li.selected { background: #e0e0e0; font-weight: bold; }
+        .repo-input { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .repo-input input { flex: 1; padding: 0.5rem; }
+        .hidden { display: none !important; }
+        .settings-pane { border: 1px solid #ccc; padding: 1rem; background: #fdfdfd; margin-bottom: 1rem; }
+        .settings-pane label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        .settings-pane input, .settings-pane select { width: 100%; padding: 0.5rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>COBOL to Mermaid Visualizer</h1>
+    <div class="container">
+        <div class="editor">
+            <div class="tabs">
+                <button id="manual-tab" class="tab active" onclick="switchEditor('manual')">Manual Input</button>
+                <button id="repo-tab" class="tab" onclick="switchEditor('repo')">Git Repository</button>
+                <button id="ai-tab" class="tab" onclick="switchEditor('ai')">AI Settings</button>
+            </div>
+
+            <div id="ai-settings-container" class="hidden">
+                <div class="settings-pane">
+                    <label>Intelligence Provider</label>
+                    <select id="ai-provider-type" onchange="toggleAiFields()">
+                        <option value="mock">Mock (Local Only)</option>
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="lm-studio">LM Studio (Local)</option>
+                        <option value="openai">OpenAI (Cloud)</option>
+                        <option value="google">Google Gemini (Cloud)</option>
+                        <option value="anthropic">Anthropic (Cloud)</option>
+                        <option value="enterprise">Internal Gateway (Enterprise)</option>
+                    </select>
+
+                    <div id="ai-url-field">
+                        <label>API Base URL</label>
+                        <input type="text" id="ai-url" placeholder="e.g., http://localhost:11434">
+                    </div>
+
+                    <div id="ai-key-field" class="hidden">
+                        <label>API Key</label>
+                        <input type="password" id="ai-key" placeholder="Enter API Key">
+                    </div>
+
+                    <label>Model Name</label>
+                    <input type="text" id="ai-model" placeholder="e.g., llama3, gpt-4">
+
+                    <button onclick="saveAiConfig()">Save Configuration</button>
+                </div>
+            </div>
+
+            <div id="manual-input-container">
+                <textarea id="source" placeholder="Paste your COBOL source code here...">000100 IDENTIFICATION DIVISION.
+000150 ENVIRONMENT DIVISION.
+000160 INPUT-OUTPUT SECTION.
+000170 FILE-CONTROL.
+000180     SELECT MY-FILE ASSIGN TO "DATA.DAT".
+000200 PROCEDURE DIVISION.
+* The main entry point of the program.
+000300 MAIN-PARA.
+000400     PERFORM SUB-PARA.
+000500     STOP RUN.
+* Performs the sub-logic.
+000600 SUB-PARA.
+000700     EXIT.</textarea>
+                <div class="button-group">
+                    <button onclick="visualizeFlow()">Visualize Flow</button>
+                    <button onclick="visualizeArchitecture()">Visualize Architecture</button>
+                    <button onclick="explainCode()">Explain Logic</button>
+                    <button onclick="runAiAction('business-rules')">AI Business Rules</button>
+                    <button onclick="runAiAction('security')">AI Security Review</button>
+                </div>
+            </div>
+
+            <div id="repo-input-container" class="hidden">
+                <div class="repo-input">
+                    <input type="text" id="repo-url" placeholder="https://github.com/user/repo.git">
+                    <button onclick="cloneRepo()">Connect</button>
+                </div>
+                <p id="repo-status"></p>
+                <ul id="file-list"></ul>
+                <div id="repo-actions" class="hidden">
+                    <div class="button-group">
+                        <button onclick="analyzeSelectedFile()">Analyze Selected File</button>
+                        <button onclick="cleanupRepo()">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="visualization">
+            <div class="tabs">
+                <button id="flow-tab" class="tab active" onclick="switchView('flow')">Flow Diagram</button>
+                <button id="arch-tab" class="tab" onclick="switchView('arch')">Architecture View</button>
+            </div>
+            <div class="preview">
+                <div id="diagram-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="explanation-container">
+        <h2 id="explanation-title">Explanation</h2>
+        <div id="explanation">Click a button to see a breakdown of the code.</div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: true, htmlLabels: true }
+        });
+        let currentView = 'flow';
+        let currentRepoPath = null;
+        let selectedFile = null;
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.visualization .tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(view + '-tab').classList.add('active');
+        }
+
+        function switchEditor(mode) {
+            document.querySelectorAll('.editor .tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(mode + '-tab').classList.add('active');
+
+            const containers = ['manual-input-container', 'repo-input-container', 'ai-settings-container'];
+            containers.forEach(c => document.getElementById(c).classList.add('hidden'));
+
+            if (mode === 'ai') {
+                document.getElementById('ai-settings-container').classList.remove('hidden');
+            } else {
+                document.getElementById(mode + '-input-container').classList.remove('hidden');
+            }
+        }
+
+        function toggleAiFields() {
+            const type = document.getElementById('ai-provider-type').value;
+            const urlField = document.getElementById('ai-url-field');
+            const keyField = document.getElementById('ai-key-field');
+
+            if (type === 'mock') {
+                urlField.classList.add('hidden');
+                keyField.classList.add('hidden');
+            } else if (['openai', 'google', 'anthropic', 'enterprise'].includes(type)) {
+                urlField.classList.remove('hidden');
+                keyField.classList.remove('hidden');
+            } else {
+                urlField.classList.remove('hidden');
+                keyField.classList.add('hidden');
+            }
+        }
+
+        async function saveAiConfig() {
+            const config = {
+                type: document.getElementById('ai-provider-type').value,
+                base_url: document.getElementById('ai-url').value,
+                api_key: document.getElementById('ai-key').value,
+                model: document.getElementById('ai-model').value
+            };
+
+            await fetch('/ai-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            alert("AI Configuration Saved.");
+        }
+
+        async function runAiAction(action) {
+            const source = document.getElementById('source').value;
+            const explanationDiv = document.getElementById('explanation');
+            explanationDiv.innerHTML = `Running AI ${action}...`;
+
+            try {
+                const response = await fetch('/ai-action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, source })
+                });
+                const data = await response.json();
+                if (data.error) {
+                    explanationDiv.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</p>`;
+                } else {
+                    explanationDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.result));
+                    document.getElementById('explanation-title').innerText = action === 'business-rules' ? "AI Business Rules" : "AI Security Review";
+                }
+            } catch (err) {
+                explanationDiv.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</p>`;
+            }
+        }
+
+        async function cloneRepo() {
+            const url = document.getElementById('repo-url').value;
+            const status = document.getElementById('repo-status');
+            const fileList = document.getElementById('file-list');
+            const actions = document.getElementById('repo-actions');
+
+            if (!url) return;
+
+            status.innerText = "Cloning repository...";
+            fileList.innerHTML = "";
+            actions.classList.add('hidden');
+
+            try {
+                const response = await fetch('/clone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    status.innerHTML = `<span style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</span>`;
+                    return;
+                }
+
+                currentRepoPath = data.repo_path;
+                status.innerText = `Found ${data.files.length} COBOL files.`;
+
+                if (data.files.length === 0) {
+                    fileList.innerHTML = "<li>No COBOL files found in repository.</li>";
+                } else {
+                    data.files.forEach(file => {
+                        const li = document.createElement('li');
+                        li.innerText = file;
+                        li.onclick = () => {
+                            document.querySelectorAll('#file-list li').forEach(el => el.classList.remove('selected'));
+                            li.classList.add('selected');
+                            selectedFile = file;
+                        };
+                        fileList.appendChild(li);
+                    });
+                    actions.classList.remove('hidden');
+                }
+            } catch (err) {
+                status.innerHTML = `<span style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</span>`;
+            }
+        }
+
+        async function analyzeSelectedFile() {
+            if (!currentRepoPath || !selectedFile) {
+                alert("Please select a file first.");
+                return;
+            }
+
+            const container = document.getElementById('diagram-container');
+            const explanationDiv = document.getElementById('explanation');
+            const sourceTextarea = document.getElementById('source');
+
+            container.innerHTML = "Analyzing...";
+            explanationDiv.innerHTML = "Analyzing...";
+
+            try {
+                const response = await fetch('/analyze-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repo_path: currentRepoPath, file_path: selectedFile })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    container.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</p>`;
+                    return;
+                }
+
+                // Sync source editor just in case
+                sourceTextarea.value = data.source;
+
+                // Render based on current view preference, but default to flow for file analysis
+                if (currentView === 'flow') {
+                    renderMermaid(data.diagram);
+                    explanationDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.explanation));
+                    document.getElementById('explanation-title').innerText = "Logic Breakdown";
+                } else {
+                    renderMermaid(data.arch_diagram);
+                    explanationDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.arch_explanation));
+                    document.getElementById('explanation-title').innerText = "Architectural Overview";
+                }
+            } catch (err) {
+                container.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</p>`;
+            }
+        }
+
+        async function cleanupRepo() {
+            if (!currentRepoPath) return;
+
+            await fetch('/cleanup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repo_path: currentRepoPath })
+            });
+
+            currentRepoPath = null;
+            selectedFile = null;
+            document.getElementById('file-list').innerHTML = "";
+            document.getElementById('repo-status').innerText = "Disconnected.";
+            document.getElementById('repo-actions').classList.add('hidden');
+            document.getElementById('repo-url').value = "";
+        }
+
+        async function visualizeFlow() {
+            switchView('flow');
+            const source = document.getElementById('source').value;
+            const container = document.getElementById('diagram-container');
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    container.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</p>`;
+                    return;
+                }
+
+                renderMermaid(data.diagram);
+            } catch (err) {
+                container.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</p>`;
+            }
+        }
+
+        async function visualizeArchitecture() {
+            switchView('arch');
+            const source = document.getElementById('source').value;
+            const container = document.getElementById('diagram-container');
+            const explanationDiv = document.getElementById('explanation');
+
+            try {
+                const response = await fetch('/architecture', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    container.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</p>`;
+                    return;
+                }
+
+                renderMermaid(data.diagram);
+                explanationDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.explanation));
+                document.getElementById('explanation-title').innerText = "Architectural Overview";
+            } catch (err) {
+                container.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</p>`;
+            }
+        }
+
+        async function renderMermaid(diagram) {
+            const container = document.getElementById('diagram-container');
+            container.innerHTML = `<pre class="mermaid">${diagram}</pre>`;
+
+            try {
+                await mermaid.run({
+                    nodes: [container.querySelector('.mermaid')]
+                });
+
+                // Add interactivity: click on nodes to jump to explanation
+                const nodes = container.querySelectorAll('.node');
+                nodes.forEach(node => {
+                    node.style.cursor = 'pointer';
+                    node.addEventListener('click', () => {
+                        const label = node.querySelector('.nodeLabel')?.innerText ||
+                                      node.querySelector('text')?.textContent;
+                        if (label) {
+                            highlightExplanation(label.trim());
+                        }
+                    });
+                });
+            } catch (err) {
+                console.error("Mermaid render error:", err);
+            }
+        }
+
+        function highlightExplanation(label) {
+            // Try to find the header in the explanation
+            const headers = document.querySelectorAll('#explanation h4');
+            let found = false;
+            headers.forEach(h => {
+                if (h.innerText.includes(label)) {
+                    h.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    h.style.backgroundColor = '#ffffcc';
+                    setTimeout(() => h.style.backgroundColor = 'transparent', 2000);
+                    found = true;
+                }
+            });
+
+            if (!found) {
+                // If not in Logic Breakdown, check Architectural Overview
+                const items = document.querySelectorAll('#explanation li');
+                items.forEach(li => {
+                    if (li.innerText.includes(label)) {
+                        li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        li.style.backgroundColor = '#ffffcc';
+                        setTimeout(() => li.style.backgroundColor = 'transparent', 2000);
+                    }
+                });
+            }
+        }
+
+        async function explainCode() {
+            const source = document.getElementById('source').value;
+            const explanationDiv = document.getElementById('explanation');
+            explanationDiv.innerHTML = "Generating explanation...";
+
+            try {
+                const response = await fetch('/explain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    explanationDiv.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(data.error)}</p>`;
+                    return;
+                }
+
+                explanationDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.explanation));
+                document.getElementById('explanation-title').innerText = "Logic Breakdown";
+            } catch (err) {
+                explanationDiv.innerHTML = `<p style="color: red;">Error: ${DOMPurify.sanitize(err.message)}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
